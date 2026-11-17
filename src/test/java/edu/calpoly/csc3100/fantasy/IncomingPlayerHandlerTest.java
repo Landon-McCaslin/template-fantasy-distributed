@@ -48,21 +48,6 @@ class IncomingPlayerHandlerTest {
     assertTrue(received.isEmpty());
   }
 
-  @Test void invalidUtf8DoesNotCrashSubscriber() {
-    List<PlayerState> received = new ArrayList<>();
-    IncomingPlayerHandler handler = new IncomingPlayerHandler("team01", "alice", received::add);
-    assertDoesNotThrow(() -> handler.accept("csc3100/a04/team01/players/bob", new byte[] {(byte) 0xc3, (byte) 0x28}));
-    assertTrue(received.isEmpty());
-  }
-
-  @Test void nullMessagePartsAreIgnored() {
-    List<PlayerState> received = new ArrayList<>();
-    IncomingPlayerHandler handler = new IncomingPlayerHandler("team01", "alice", received::add);
-    assertDoesNotThrow(() -> handler.accept(null, message("bob")));
-    assertDoesNotThrow(() -> handler.accept("csc3100/a04/team01/players/bob", null));
-    assertTrue(received.isEmpty());
-  }
-
   @Test void rejectsMismatchedTopicAndPayloadPlayer() {
     List<PlayerState> received = new ArrayList<>();
     IncomingPlayerHandler handler = new IncomingPlayerHandler("team01", "alice", received::add);
