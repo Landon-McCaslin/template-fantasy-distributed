@@ -12,6 +12,7 @@ public final class Blackboard extends PropertyChangeSupport {
   public static final String PLAYERS = "players";
   public static final int COLUMNS = 16;
   public static final int ROWS = 11;
+  private static final Set<String> EQUIPMENT = Set.of("sword", "shield", "shoes");
   private final Map<String,PlayerState> players = new LinkedHashMap<>();
   private final GamePublisher publisher;
   private String localUsername;
@@ -21,30 +22,52 @@ public final class Blackboard extends PropertyChangeSupport {
     this.publisher = Objects.requireNonNull(publisher);
   }
 
-  private void store(PlayerState state) {
-    PlayerState previous = players.put(state.player(), state);
+  private boolean store(PlayerState state) {
+    PlayerState previous = players.get(state.player());
+    if (state.equals(previous)) return false;
+    players.put(state.player(), state);
     firePropertyChange(new java.beans.PropertyChangeEvent(this, PLAYERS, previous, state));
+    return true;
+  }
+  private void storeLocal(PlayerState state) {
+    if (store(state)) publisher.publish(state);
+  }
+  private PlayerState localPlayer(String username) {
+    return localUsername != null && localUsername.equals(username) ? players.get(username) : null;
   }
   public PlayerState getPlayer(String username) { return players.get(username); }
   public Collection<PlayerState> players() { return List.copyOf(players.values()); }
   public void addLocalPlayer(PlayerState state) {
     localUsername = state.player();
-    store(state);
-    publisher.publish(state);
+    storeLocal(state);
   }
   public void moveLocal(String username, int dx, int dy) {
-    // TODO: move only the local player one cardinal tile within the board.
-    // Store the changed snapshot and publish it once.
+    if (!((dx == 1 || dx == -1) && dy == 0
+        || dx == 0 && (dy == 1 || dy == -1))) return;
+    PlayerState state = localPlayer(username);
+    if (state == null) return;
+    int x = state.x() + dx;
+    int y = state.y() + dy;
+    if (x < 0 || x >= COLUMNS || y < 0 || y >= ROWS) return;
+    storeLocal(new PlayerState(state.player(), state.type(), x, y, state.equipment()));
   }
   public void applyRemote(PlayerState state) {
     if (!state.player().equals(localUsername)) store(state);
   }
   public void equipLocal(String username, String item) {
-    // TODO: append supported equipment to the local snapshot if absent.
-    // Store the changed snapshot and publish it once.
+    if (item == null || !EQUIPMENT.contains(item)) return;
+    PlayerState state = localPlayer(username);
+    if (state == null || state.equipment().contains(item)) return;
+    List<String> equipment = new ArrayList<>(state.equipment());
+    equipment.add(item);
+    storeLocal(new PlayerState(state.player(), state.type(), state.x(), state.y(), equipment));
   }
   public void unequipLocal(String username, String item) {
-    // TODO: remove the requested item from the local snapshot if present.
-    // Preserve the order of the other items, store the snapshot, and publish it once.
+    if (item == null || !EQUIPMENT.contains(item)) return;
+    PlayerState state = localPlayer(username);
+    if (state == null) return;
+    List<String> equipment = new ArrayList<>(state.equipment());
+    if (!equipment.remove(item)) return;
+    storeLocal(new PlayerState(state.player(), state.type(), state.x(), state.y(), equipment));
   }
 }

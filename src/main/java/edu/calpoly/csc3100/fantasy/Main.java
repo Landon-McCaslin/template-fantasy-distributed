@@ -52,6 +52,11 @@ public final class Main {
     JPanel controls = new JPanel();
     for (String item : List.of("sword", "shield", "shoes")) {
       JCheckBox toggle = new JCheckBox(item);
+      // Let the board handle arrows instead of Swing's checkbox navigation.
+      for (String key : List.of("UP", "DOWN", "LEFT", "RIGHT")) {
+        toggle.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
+            .remove(KeyStroke.getKeyStroke(key));
+      }
       toggle.addActionListener(event -> {
         if (toggle.isSelected()) blackboard.equipLocal(username, item);
         else blackboard.unequipLocal(username, item);
